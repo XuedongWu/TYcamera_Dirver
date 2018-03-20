@@ -45,6 +45,29 @@ void DriverNodelet::onInitCamera(){
     NODELET_INFO("rgb_frame_id = '%s' ", rgb_frame_id_.c_str());
     NODELET_INFO("depth_frame_id = '%s' ", depth_frame_id_.c_str());
 
+    double fx,fy,cx,cy;
+    param_nh.param("depth_camera_fx",fx,564.354);
+    param_nh.param("depth_camera_fy",fy,564.354);
+    param_nh.param("depth_camera_cx",cx,318.766);
+    param_nh.param("depth_camera_cy",cy,254.873);
+
+    default_depth_camera_intr_.data[0] = fx;
+    default_depth_camera_intr_.data[4] = fy;
+    default_depth_camera_intr_.data[2] = cx;
+    default_depth_camera_intr_.data[5] = cy;
+    default_depth_camera_intr_.data[8] = 1;
+
+
+    NODELET_INFO("default depth camera intrinsic:");
+    NODELET_INFO("          %f 0.0 %f",default_depth_camera_intr_.data[0],
+                                       default_depth_camera_intr_.data[2]);
+    NODELET_INFO("          0.0 %f %f",default_depth_camera_intr_.data[4],
+                                       default_depth_camera_intr_.data[5]);
+    NODELET_INFO("          %f %f %f",default_depth_camera_intr_.data[6],
+                                       default_depth_camera_intr_.data[7],
+                                        default_depth_camera_intr_.data[8]);
+
+    param_nh.param("old_device",old_device_,false);
 
     TY_DEV_HANDLE hDevice;
     LOGD("=== Init lib");
@@ -85,7 +108,7 @@ void DriverNodelet::onInitCamera(){
     int32_t allComps=0;
     ASSERT_OK( TYGetComponentIDs(hDevice, &allComps) );
 
-    if(allComps & TY_COMPONENT_POINT3D_CAM){
+    if((allComps & TY_COMPONENT_POINT3D_CAM) && !old_device_){
       LOGD("=== Configure components, open point3d cam");
       // int32_t componentIDs = TY_COMPONENT_POINT3D_CAM;
       int32_t componentIDs = TY_COMPONENT_POINT3D_CAM;
@@ -101,6 +124,7 @@ void DriverNodelet::onInitCamera(){
                               TY_STRUCT_CAM_INTRINSIC, (void*)&rgb_camera_intr_, sizeof(rgb_camera_intr_));
         if(err != TY_STATUS_OK){
             LOGE("Get camera RGB intrinsic failed: %s", TYErrorString(err));
+            rgb_camera_intr_ = default_depth_camera_intr_;
         } else {
             has_color_ = true;
             LOGD("=== Has RGB camera, open RGB cam");
@@ -120,12 +144,14 @@ void DriverNodelet::onInitCamera(){
                             (void*)&depth_camera_intr_, sizeof(depth_camera_intr_));
       if(err != TY_STATUS_OK){
           LOGE("Get camera depth intrinsic failed: %s", TYErrorString(err));
+          has_depth_intrinsic_ = false;
+          depth_camera_intr_ = default_depth_camera_intr_;
       } else {
-          has_depth_ = true;
-          LOGD("=== Has depth camera, open depth cam");
-          ASSERT_OK( TYEnableComponents(hDevice, TY_COMPONENT_DEPTH_CAM) );
+          has_depth_intrinsic_ = true;
       }
-
+      has_depth_ = true;
+      LOGD("=== Has depth camera, open depth cam");
+      ASSERT_OK( TYEnableComponents(hDevice, TY_COMPONENT_DEPTH_CAM) );
 
     }
 
@@ -204,6 +230,26 @@ void DriverNodelet::onInitCamera(){
     return ;
 }
 
+void DriverNodelet::depth2Point(const cv::Mat& depth,cv::Mat& p3d){
+
+  if(!depth.empty()){
+    p3d = cv::Mat(depth.size(),CV_32FC3);
+    uint16_t* dp = (uint16_t*)depth.data;
+    float* pd = (float*)p3d.data;
+    for(int i=0;i<depth.rows;i++){
+      for(int j=0;j<depth.cols;j++){
+        pd[i * p3d.cols * 3 + j * 3] =dp[i * depth.cols + j] * (j - depth_camera_intr_.data[2])
+                      / depth_camera_intr_.data[0];
+        pd[i * p3d.cols * 3 + j * 3 + 1] =dp[i * depth.cols + j] * (i - depth_camera_intr_.data[5])
+                      / depth_camera_intr_.data[4];
+        pd[i * p3d.cols * 3 + j * 3 + 2] = dp[i * depth.cols + j];
+      }
+    }
+  }else{
+    p3d = cv::Mat();
+  }
+}
+
 void DriverNodelet::frameHandler(TY_FRAME_DATA* frame, void* userdata){
   CallbackData* pData = (CallbackData*) userdata;
   //LOGD("=== Get frame %d", ++pData->index);
@@ -215,6 +261,13 @@ void DriverNodelet::frameHandler(TY_FRAME_DATA* frame, void* userdata){
   if(!depth.empty()){
 
     publishDepthImage(depth,stamp,false);
+
+    if(!has_point3d_){
+      depth2Point(depth,p3d);
+      if(!p3d.empty()){
+        publishPoint3d(p3d,stamp);
+      }
+    }
   }
 
   if(!color.empty()){

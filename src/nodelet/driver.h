@@ -90,10 +90,14 @@ namespace camport{
         bool InitIr();
         bool InitDepthReg();
 
+        void depth2Point(const cv::Mat& depth,cv::Mat& p3d);
+
         bool developer_mode = false;
         bool has_color_ = false;
         bool has_depth_ = false;
         bool has_point3d_ = false;
+        bool has_depth_intrinsic_ = false;
+        bool old_device_          = false;
 
         void frameHandler(TY_FRAME_DATA* frame, void* userdata);
         void publishRgbImage(const cv::Mat&  iFrame, ros::Time time) const;
@@ -124,6 +128,8 @@ namespace camport{
         //相机结构参数
         TY_CAMERA_INTRINSIC rgb_camera_intr_;    ///< rgb相机内参
         TY_CAMERA_INTRINSIC depth_camera_intr_;  ///< depth相机内参
+        TY_CAMERA_INTRINSIC default_rgb_camera_intr_;
+        TY_CAMERA_INTRINSIC default_depth_camera_intr_;
 
 
         // Counters/flags for skipping frames

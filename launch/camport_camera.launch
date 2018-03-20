@@ -9,6 +9,7 @@
     <arg name="depth_frame_id" default="$(arg tf_prefix)/$(arg camera)_depth_optical_frame" />
 
     <arg name="developer_mode" default="false"/>
+    <arg name="old_device" default="false"/>
 
     <!-- Arguments for remapping all device namespaces -->
     <arg name="rgb"              default="rgb" />
@@ -62,6 +63,7 @@
             <arg name="projector"             value="$(arg projector)" />
             <arg name="respawn"               value="$(arg respawn)" />
             <arg name="developer_mode"        value="$(arg developer_mode)"/>
+            <arg name="old_device"            value="$(arg old_device)"/>
         </include>
 
         <!-- Load standard constellation of processing nodelets -->

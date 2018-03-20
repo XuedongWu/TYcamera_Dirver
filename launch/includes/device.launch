@@ -6,8 +6,13 @@
     <!-- Driver parameters -->
     <arg name="rgb_frame_id" />
     <arg name="depth_frame_id" />
+    <arg name="depth_camera_fx" default="564.354"/>
+    <arg name="depth_camera_fy" default="564.354"/>
+    <arg name="depth_camera_cx" default="318.766"/>
+    <arg name="depth_camera_cy" default="254.873"/>
 
     <arg name="developer_mode" default="false"/>
+    <arg name="old_device" default="false"/>
 
 
     <arg name="respawn" default="false" />
@@ -28,12 +33,20 @@
         <param name="rgb_frame_id"   value="$(arg rgb_frame_id)" />
         <param name="depth_frame_id" value="$(arg depth_frame_id)" />
         <param name="developer_mode" value="$(arg developer_mode)"/>
+        <param name="old_device" value="$(arg old_device)"/>
+
+        <param name="depth_camera_fx" value="$(arg depth_camera_fx)"/>
+        <param name="depth_camera_fy" value="$(arg depth_camera_fy)"/>
+        <param name="depth_camera_cx" value="$(arg depth_camera_cx)"/>
+        <param name="depth_camera_cy" value="$(arg depth_camera_cy)"/>
 
         <remap from="ir" to="$(arg ir)" />
         <remap from="rgb" to="$(arg rgb)" />
         <remap from="depth" to="$(arg depth)" />
         <remap from="depth_registered" to="$(arg depth_registered)" />
         <remap from="projector" to="$(arg projector)" />
+
+
     </node>
 
 </launch>
