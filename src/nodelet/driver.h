@@ -50,6 +50,10 @@
 #include <pcl/point_cloud.h>
 #include <sensor_msgs/PointCloud2.h>
 
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
 
 namespace camport{
 
@@ -63,6 +67,9 @@ namespace camport{
             int             index;
             TY_DEV_HANDLE   hDevice;
             DepthRender*    render;
+
+            TY_CAMERA_DISTORTION color_dist;
+            TY_CAMERA_INTRINSIC color_intri;
         };
 
         /** \brief Nodelet initialization routine. */

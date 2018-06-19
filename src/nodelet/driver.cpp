@@ -118,8 +118,6 @@ void DriverNodelet::onInitCamera(){
 
 
     if(allComps & TY_COMPONENT_RGB_CAM){
-
-
         int err = TYGetStruct(hDevice, TY_COMPONENT_RGB_CAM,
                               TY_STRUCT_CAM_INTRINSIC, (void*)&rgb_camera_intr_, sizeof(rgb_camera_intr_));
         if(err != TY_STATUS_OK){
@@ -132,7 +130,7 @@ void DriverNodelet::onInitCamera(){
         }
 
         LOGD("=== Configure feature, set rgb resolution to 640x480.");
-        TY_STATUS errs = TYSetEnum(hDevice, TY_COMPONENT_RGB_CAM, TY_ENUM_IMAGE_MODE, TY_IMAGE_MODE_640x480);
+        TY_STATUS errs = TYSetEnum(hDevice, TY_COMPONENT_RGB_CAM, TY_ENUM_IMAGE_MODE, TY_IMAGE_MODE_1280x960);
         ASSERT(errs == TY_STATUS_OK || errs == TY_STATUS_NOT_PERMITTED);
     }
 
@@ -201,6 +199,29 @@ void DriverNodelet::onInitCamera(){
     ASSERT_OK( TYStartCapture(hDevice) );
 
     LOGD("=== While loop to fetch frame");
+
+
+    LOGD("=== Read color rectify matrix");
+    {
+        TY_CAMERA_DISTORTION color_dist;
+        TY_CAMERA_INTRINSIC color_intri;
+        TY_STATUS ret = TYGetStruct(hDevice, TY_COMPONENT_RGB_CAM, TY_STRUCT_CAM_DISTORTION, &color_dist, sizeof(color_dist));
+        ret |= TYGetStruct(hDevice, TY_COMPONENT_RGB_CAM, TY_STRUCT_CAM_INTRINSIC, &color_intri, sizeof(color_intri));
+        if (ret == TY_STATUS_OK)
+        {
+            cb_data.color_intri = color_intri;
+            cb_data.color_dist= color_dist;
+        }
+        else
+        { //reading data from device failed .set some default values....
+            memset(cb_data.color_dist.data, 0, 12 * sizeof(float));
+            memset(cb_data.color_intri.data, 0, 9 * sizeof(float));
+            cb_data.color_intri.data[0] = 1000.f;
+            cb_data.color_intri.data[4] = 1000.f;
+            cb_data.color_intri.data[2] = 600.f;
+            cb_data.color_intri.data[5] = 450.f;
+        }
+    }
 
     TY_FRAME_DATA frame;
 
@@ -271,8 +292,25 @@ void DriverNodelet::frameHandler(TY_FRAME_DATA* frame, void* userdata){
   }
 
   if(!color.empty()){
-    publishRgbImage(color,stamp);
-    //cv::imshow("few",color);
+      cv::Mat undistort_result(color.size(), CV_8UC3);
+      TY_IMAGE_DATA dst;
+      dst.width = color.cols;
+      dst.height = color.rows;
+      dst.size = undistort_result.size().area() * 3;
+      dst.buffer = undistort_result.data;
+      dst.pixelFormat = TY_PIXEL_FORMAT_RGB;
+      TY_IMAGE_DATA src;
+      src.width = color.cols;
+      src.height = color.rows;
+      src.size = color.size().area() * 3;
+      src.pixelFormat = TY_PIXEL_FORMAT_RGB;
+      src.buffer = color.data;
+      //undistort camera image
+      //TYUndistortImage accept TY_IMAGE_DATA from TY_FRAME_DATA , pixel format RGB888 or MONO8
+      //you can also use opencv API cv::undistort to do this job.
+      ASSERT_OK(TYUndistortImage(&pData->color_intri, &pData->color_dist, NULL, &src, &dst));
+      color = undistort_result;
+      publishRgbImage(color,stamp);
   }
 
   if(!p3d.empty()){
@@ -305,6 +343,7 @@ void DriverNodelet::publishDepthImage(const cv::Mat &iFrame, ros::Time time, boo
     cv_bridge::CvImage cv_image(header,sensor_msgs::image_encodings::MONO16,iFrame);
 
     if(reg){
+//        ROS_INFO("rgb_camera_intr_.data[0]:::%f",rgb_camera_intr_.data[0]);
 //        pub_depth_registered_.publish(depth_msg.toImageMsg(),
 //                                      getRGBCameraInfo(iFrame->getWidth(),
 //                                                       iFrame->getHeight(),time));
@@ -361,6 +400,7 @@ sensor_msgs::CameraInfoPtr DriverNodelet::getRGBCameraInfo(int width, int height
     info->K[4] = rgb_camera_intr_.data[4]; // fy
     info->K[2] = rgb_camera_intr_.data[2];     // cx
     info->K[5] = rgb_camera_intr_.data[5];     // cy
+
     info->K[8] = 1.0;
 
     // No separate rectified image plane, so R = I
@@ -374,7 +414,6 @@ sensor_msgs::CameraInfoPtr DriverNodelet::getRGBCameraInfo(int width, int height
     info->P[2]  = rgb_camera_intr_.data[2];     // cx
     info->P[6]  = rgb_camera_intr_.data[5];     // cy
     info->P[10] = 1.0;
-
     return info;
 }
 
@@ -400,6 +439,8 @@ sensor_msgs::CameraInfoPtr DriverNodelet::getDepthCameraInfo(int width, int heig
   info->K[4] = depth_camera_intr_.data[4]; // fy
   info->K[2] = depth_camera_intr_.data[2];     // cx
   info->K[5] = depth_camera_intr_.data[5];     // cy
+
+
   info->K[8] = 1.0;
 
   // No separate rectified image plane, so R = I
@@ -409,7 +450,7 @@ sensor_msgs::CameraInfoPtr DriverNodelet::getDepthCameraInfo(int width, int heig
   // Then P=K(I|0) = (K|0)
   info->P.assign(0.0);
   info->P[0]  = depth_camera_intr_.data[0]; //fx
-  info->P[5] = depth_camera_intr_.data[4]; // fy
+  info->P[5]  = depth_camera_intr_.data[4]; // fy
   info->P[2]  = depth_camera_intr_.data[2];     // cx
   info->P[6]  = depth_camera_intr_.data[5];     // cy
   info->P[10] = 1.0;

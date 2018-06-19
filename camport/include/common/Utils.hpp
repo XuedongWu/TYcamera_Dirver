@@ -38,6 +38,7 @@ static inline int parseFrame(const TY_FRAME_DATA& frame, cv::Mat* pDepth
         , cv::Mat* pColor, cv::Mat* pPoints)
 {
     for( int i = 0; i < frame.validCount; i++ ){
+
         // get depth image
         if(pDepth && frame.image[i].componentID == TY_COMPONENT_DEPTH_CAM){
             *pDepth = cv::Mat(frame.image[i].height, frame.image[i].width
@@ -55,6 +56,7 @@ static inline int parseFrame(const TY_FRAME_DATA& frame, cv::Mat* pDepth
         }
         // get BGR
         if(pColor && frame.image[i].componentID == TY_COMPONENT_RGB_CAM){
+
             if (frame.image[i].pixelFormat == TY_PIXEL_FORMAT_JPEG){
                 cv::Mat jpeg(frame.image[i].height, frame.image[i].width
 			    	    , CV_8UC1, frame.image[i].buffer);
@@ -68,6 +70,8 @@ static inline int parseFrame(const TY_FRAME_DATA& frame, cv::Mat* pDepth
             else if (frame.image[i].pixelFormat == TY_PIXEL_FORMAT_YUYV){
                 cv::Mat yuv(frame.image[i].height, frame.image[i].width
                             , CV_8UC2, frame.image[i].buffer);
+//                std::cout<<"width:::"<<frame.image[i].width<<std::endl;
+//                std::cout<<"height:::"<<frame.image[i].height<<std::endl;
                 cv::cvtColor(yuv, *pColor, cv::COLOR_YUV2BGR_YUYV);
             } else if(frame.image[i].pixelFormat == TY_PIXEL_FORMAT_RGB){
                 cv::Mat rgb(frame.image[i].height, frame.image[i].width
