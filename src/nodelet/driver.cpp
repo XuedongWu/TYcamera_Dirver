@@ -276,7 +276,7 @@ void DriverNodelet::frameHandler(TY_FRAME_DATA* frame, void* userdata){
   //LOGD("=== Get frame %d", ++pData->index);
 
   cv::Mat depth, color, p3d;
-  parseFrame(*frame, &depth, 0, 0, &color, &p3d);
+  parseFrame(*frame, 0, 0, 0, &color, 0);
   ros::Time stamp = ros::Time::now();
 
   if(!depth.empty()){
