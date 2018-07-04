@@ -1,0 +1,98 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <arg name="ns" default=""/>
+    <arg name="tf_prefix" default="$(arg ns)"/>
+    <arg name="camera" default="camera"/>
+    <arg name="rgb_frame_id"   default="$(arg tf_prefix)/$(arg camera)_rgb_optical_frame" />
+    <arg name="depth_frame_id" default="$(arg tf_prefix)/$(arg camera)_depth_optical_frame" />
+
+    <arg name="developer_mode" default="false"/>
+    <arg name="old_device" default="false"/>
+
+    <!-- Arguments for remapping all device namespaces -->
+    <arg name="rgb"              default="rgb" />
+    <arg name="ir"               default="ir" />
+    <arg name="depth"            default="depth" />
+    <arg name="depth_registered" default="depth_registered" />
+    <arg name="projector"        default="projector" />
+
+
+    <arg name="load_driver" default="true" />
+    <arg name="publish_tf" default="true" />
+    <!-- Processing Modules -->
+    <arg name="rgb_processing"                  default="true"/>
+    <arg name="ir_processing"                   default="true"/>
+    <arg name="depth_processing"                default="true"/>
+    <arg name="depth_registered_processing"     default="true"/>
+    <arg name="disparity_processing"            default="true"/>
+    <arg name="disparity_registered_processing" default="true"/>
+    <arg name="hw_registered_processing"        default="true" />
+    <arg name="sw_registered_processing"        default="true" />
+
+    <!-- Disable bond topics by default -->
+    <arg name="bond" default="false" /> <!-- DEPRECATED, use respawn arg instead -->
+    <arg name="respawn" default="$(arg bond)" />
+
+    <!-- Worker threads for the nodelet manager -->
+    <arg name="num_worker_threads" default="4" />
+
+    <group ns="$(arg camera)">
+
+        <!-- Start nodelet manager in provided namespace -->
+        <arg name="manager" value="$(arg camera)_nodelet_manager" />
+        <arg name="debug" default="false" /> <!-- Run manager in GDB? -->
+        <include file="$(find rgbd_launch)/launch/includes/manager.launch.xml">
+            <arg name="name"                value="$(arg manager)" />
+            <arg name="debug"               value="$(arg debug)" />
+            <arg name="num_worker_threads"  value="$(arg num_worker_threads)" />
+        </include>
+
+
+        <include if="$(arg load_driver)"
+                 file="$(find camport)/launch/includes/device.launch">
+            <!-- Could really use some syntactic sugar for this -->
+            <arg name="manager"               value="$(arg manager)" /> <!-- fully resolved -->
+            <arg name="rgb_frame_id"          value="$(arg rgb_frame_id)" />
+            <arg name="depth_frame_id"        value="$(arg depth_frame_id)" />
+            <arg name="rgb"                   value="$(arg rgb)" />
+            <arg name="ir"                    value="$(arg ir)" />
+            <arg name="depth"                 value="$(arg depth)" />
+            <arg name="depth_registered"      value="$(arg depth_registered)" />
+            <arg name="projector"             value="$(arg projector)" />
+            <arg name="respawn"               value="$(arg respawn)" />
+            <arg name="developer_mode"        value="$(arg developer_mode)"/>
+            <arg name="old_device"            value="$(arg old_device)"/>
+        </include>
+
+        <!-- Load standard constellation of processing nodelets -->
+        <include file="$(find rgbd_launch)/launch/includes/processing.launch.xml">
+            <arg name="manager"                         value="$(arg manager)" />
+            <arg name="rgb"                             value="$(arg rgb)" />
+            <arg name="ir"                              value="$(arg ir)" />
+            <arg name="depth"                           value="$(arg depth)" />
+            <arg name="depth_registered"                value="$(arg depth_registered)" />
+            <arg name="projector"                       value="$(arg projector)" />
+            <arg name="respawn"                         value="$(arg respawn)" />
+            <arg name="rgb_processing"                  value="$(arg rgb_processing)" />
+            <arg name="ir_processing"                   value="$(arg ir_processing)" />
+            <arg name="depth_processing"                value="$(arg depth_processing)" />
+            <arg name="depth_registered_processing"     value="$(arg depth_registered_processing)" />
+            <arg name="disparity_processing"            value="$(arg disparity_processing)" />
+            <arg name="disparity_registered_processing" value="$(arg disparity_registered_processing)" />
+            <arg name="hw_registered_processing"        value="$(arg hw_registered_processing)" />
+            <arg name="sw_registered_processing"        value="$(arg sw_registered_processing)" />
+        </include>
+
+    </group>
+
+
+    <!-- Load reasonable defaults for the relative pose between cameras -->
+    <param name="tf_prefix" value="$(arg tf_prefix)" /> <!-- for static transform publisher -->
+    <include if="$(arg publish_tf)"
+             file="$(find camport)/launch/camport_frame.launch">
+        <arg name="camera" value="$(arg camera)" />
+    </include>
+
+</launch>

@@ -1,0 +1,12 @@
+<?xml version="1.0" ?>
+<!-- Start nodelet manager -->
+<launch>
+
+    <!-- Name here should NOT be globally qualified (node names cannot contain /) -->
+    <arg name="name" />
+
+    <!-- Nodelet manager -->
+    <node pkg="nodelet" type="nodelet" name="$(arg name)" args="manager"
+          output="screen"  />
+
+</launch>

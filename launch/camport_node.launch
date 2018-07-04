@@ -1,0 +1,5 @@
+<?xml version="1.0"  ?>
+
+<launch>
+    <node pkg="stereo_camera" type="stereo_camera_node" name="stereo_camera" output="screen"/>
+</launch>

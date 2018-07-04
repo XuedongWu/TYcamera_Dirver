@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<library path="lib/libcamport">
+
+  <class name="camport/driver" type="camport::DriverNodelet" base_class_type="nodelet::Nodelet">
+    <description>
+      camport driver nodelet.
+    </description>
+  </class>
+
+</library>
